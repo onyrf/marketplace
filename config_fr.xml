@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>marketplace</name>
+    <displayName><![CDATA[Marketplace]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Ce module vous permet d&#039;avoir votre propre Marketplace.]]></description>
+    <author><![CDATA[]]></author>
+    <tab><![CDATA[market_place]]></tab>
+	<confirmUninstall><![CDATA[Êtes- vous sûr que vous voulez désinstaller ? ]]></confirmUninstall>
+    <is_configurable>1</is_configurable>
+    <need_instance>0</need_instance>
+	<limited_countries></limited_countries>
+</module>
