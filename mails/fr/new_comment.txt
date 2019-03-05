@@ -1,0 +1,3 @@
+>Nouveau commentaire d'un client sur le produit {product_name} sur le site {shop_name}.
+
+Accéder à la gestion des commentaires pour informer le vendeur: <a href="{shop_url}" style="color:#337ff1">{shop_name}</a>

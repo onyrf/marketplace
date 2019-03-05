@@ -1,0 +1,8 @@
+[{shop_url}] 
+
+Bonjour, 
+
+Le client {firstname} {lastname} a decidé d'effectuer un remboursement de sa commande ayant pour référence {order_name} N°{id_order}.
+
+{shop_name} [{shop_url}]
+

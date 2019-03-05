@@ -1,0 +1,17 @@
+
+[{shop_url}] 
+
+Bonjour, {seller_name}
+
+Remboursement déclenché pour la Commande {order_name} 
+
+Nous avons émis un remboursement d'un montant de {amount_refund} au profit de {firstname} {lastname} pour la commande suivante :
+
+
+Nous ajusterons votre compte vendeur de ce montant.
+
+
+Vous pouvez visualiser votre compte à tout en vous y connectant et en vous rendant sur la page "Mon compte".
+
+{shop_name} [{shop_url}]
+

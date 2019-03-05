@@ -1,0 +1,12 @@
+[{shop_url}] 
+
+Bonjour {firstname} {lastname}, 
+
+Nous avons bien reçu votre courrier sollicitant le remboursement de votre achat suivant la commande ayant pour référence {order_name} N°{id_order}.
+
+Nous vous prions de nous excuser de cet incident.
+
+Par la suite en attendant notre retour dans les plus bref délai, vous pouvez toujours effectuer d'autres achats sur notre site.
+
+{shop_name} [{shop_url}]
+

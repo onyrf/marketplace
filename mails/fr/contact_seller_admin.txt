@@ -1,0 +1,7 @@
+Bonjour,
+Le vendeur {seller_name} vous a envoyé un message : 
+------------------------------------------------------------
+Objet : {sujet}
+
+
+Message : {message}.
