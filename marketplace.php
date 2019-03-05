@@ -354,37 +354,68 @@ class marketplace extends Module
         //MOVE FILE TO OVERRIDE        
         if(!file_exists(_PS_ROOT_DIR_.'/controllers/front/PdfDeliverySlipController.php'))
             copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/PdfDeliverySlipController.php',_PS_ROOT_DIR_.'/controllers/front/PdfDeliverySlipController.php');
+        
+        copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/card_manage_installed.html.twig',_PS_ROOT_DIR_.'/src/PrestaShopBundle/Resources/views/Admin/Module/Includes/card_manage_installed.html.twig');
+
+        if(!file_exists(_PS_ROOT_DIR_.'/classes/pdf/HTMLTemplateDeliverySlipBuyer.php'))
+            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/HTMLTemplateDeliverySlipBuyer.php',_PS_ROOT_DIR_.'/classes/pdf/HTMLTemplateDeliverySlipBuyer.php');
 
         $current_theme_path = _PS_ALL_THEMES_DIR_.$this->context->shop->theme_name;
 
         $current_theme_admin_path = _PS_BO_ALL_THEMES_DIR_;
 
-        if(file_exists($current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line.tpl'))
-        {
-            //delete files
-            unlink($current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line.tpl');
+        //copy override invoice product tab
+        
+        if (!file_exists($current_theme_path.'/pdf')) {
+            if(mkdir($current_theme_path.'/pdf', 0755, true))
+            {
+                copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/invoice.product-tab.tpl',$current_theme_path.'/pdf/invoice.product-tab.tpl');
 
-            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/cart-detailed-product-line.tpl',$current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line.tpl');
+                copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/invoice.total-tab.tpl',$current_theme_path.'/pdf/invoice.total-tab.tpl');
+
+                copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/delivery-slip.addresses-tab.tpl',$current_theme_path.'/pdf/delivery-slip.addresses-tab.tpl');
+            }
+        }
+        else
+        {
+            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/invoice.product-tab.tpl',$current_theme_path.'/pdf/invoice.product-tab.tpl');
+
+            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/invoice.total-tab.tpl',$current_theme_path.'/pdf/invoice.total-tab.tpl');
+
+            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/pdf/delivery-slip.addresses-tab.tpl',$current_theme_path.'/pdf/delivery-slip.addresses-tab.tpl');
         }
 
-        if(file_exists($current_theme_path.'/templates/customer/order-detail.tpl'))
+        /*if(!file_exists($current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line-bak.tpl'))
         {
-            //delete files
-            unlink($current_theme_path.'/templates/customer/order-detail.tpl');
+            //rename files
+            rename($current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line.tpl',$current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line-bak.tpl');
+
+            copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/cart-detailed-product-line.tpl',$current_theme_path.'/templates/checkout/_partials/cart-detailed-product-line.tpl');
+        }*/
+
+        if(!file_exists($current_theme_path.'/templates/customer/order-detail-bak.tpl'))
+        {
+            //rename files
+            rename($current_theme_path.'/templates/customer/order-detail.tpl',$current_theme_path.'/templates/customer/order-detail-bak.tpl');
 
             copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/order-detail.tpl',$current_theme_path.'/templates/customer/order-detail.tpl');
         }
 
-        if(file_exists($current_theme_admin_path.'default/template/controllers/orders/_shipping.tpl'))
+        if(!file_exists($current_theme_admin_path.'default/template/controllers/orders/_shipping-bak.tpl'))
         {
-            //delete files
-            unlink($current_theme_admin_path.'default/template/controllers/orders/_shipping.tpl');
+            //rename files
+            rename($current_theme_admin_path.'default/template/controllers/orders/_shipping.tpl',$current_theme_admin_path.'default/template/controllers/orders/_shipping-bak.tpl');
 
             copy(_PS_ROOT_DIR_.'/modules/marketplace/override/files/_shipping.tpl',$current_theme_admin_path.'default/template/controllers/orders/_shipping.tpl');
         }
+
+
+        //Tools::clearSmartyCache﻿﻿﻿();﻿
+
         //CREATE ORDER STATES
         
-        if (!parent::install() OR 
+        if (!parent::install() OR
+                !$this->registerHook('displayAfterCarrier') OR
                 !$this->registerHook('displayRefundConfirm') OR
                 !$this->registerHook('displayHeader') OR 
                 !$this->registerHook('backOfficeHeader') OR
@@ -539,21 +570,27 @@ class marketplace extends Module
                 
 
                 $seller_shipping_cost = 0;
-                if (count($seller_carriers) > 0) {
-                    $carrier = new Carrier($seller_carriers[0]['id_carrier']);
-                    $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone);
-                    //$seller_shipping_cost = $seller_carriers[0]['price'];
-                    if (!$seller_shipping_cost)
-                        $seller_shipping_cost = 0;
-
-                    $seller_shipping_cost = $seller_shipping_cost + $s['additional_shipping_cost'];
-
-                    $offersOther[$i]['carrier_name'] = $carrier->name; 
-                    $offersOther[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
-                    $offersOther[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay'];
-                    $offersOther[$i]['price_with_shipping'] = $offersOther[$i]['price'] + $seller_shipping_cost;
+                if($s['id_seller'])
+                {
+                    $offers[$i]['seller_shipping_cost'] = $s['additional_shipping_cost'];
                 }
+                else
+                {
+                    if (count($seller_carriers) > 0) {
+                        $carrier = new Carrier((int)Configuration::get('PS_CARRIER_DEFAULT'));//new Carrier($seller_carriers[0]['id_carrier']);
+                        $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone);
+                        //$seller_shipping_cost = $seller_carriers[0]['price'];
+                        if (!$seller_shipping_cost)
+                            $seller_shipping_cost = 0;
 
+                        $seller_shipping_cost = $seller_shipping_cost + $s['additional_shipping_cost'];
+
+                        $offersOther[$i]['carrier_name'] = $carrier->name; 
+                        $offersOther[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
+                        $offersOther[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay'];
+                        $offersOther[$i]['price_with_shipping'] = $offersOther[$i]['price'] + $seller_shipping_cost;
+                    }
+                }
                 if (Seller::hasImage($s['id_customer']))
                     $offersOther[$i]['seller_has_image'] = 1;
                 else
@@ -656,6 +693,11 @@ class marketplace extends Module
             $image = Product::getCover((int)Tools::getValue('id_product'));
             $cover_image = $this->context->link->getImageLink($product->link_rewrite, $image['id_image'], 'small_default');
 
+            if($product->is_virtual)
+                $delivery_price = 0;
+            else
+                $delivery_price = $delivery_price + $product->additional_shipping_cost;
+
             $this->context->smarty->assign(array(
                     'id_seller_product_comment_form' => (int)Tools::getValue('id_product'),
                     'product' => $product,
@@ -672,7 +714,7 @@ class marketplace extends Module
                     'averageTotal' => round($average['grade']),
                     'ratings' => SellerProductComment::getRatings((int)Tools::getValue('id_product')),
                     'nbComments' => (int)(SellerProductComment::getCommentNumber((int)Tools::getValue('id_product'))),
-                    'delivery_price' => $delivery_price + $product->additional_shipping_cost,
+                    'delivery_price' => $delivery_price,
                 ));
 
                 return ($this->display(__FILE__, 'productcomments_top.tpl'));
@@ -1055,7 +1097,9 @@ class marketplace extends Module
     public function createEmails() 
     {
         $url_shop = _PS_BASE_URL_ . __PS_BASE_URI__;
-        
+        $url_shop_admin = _PS_ADMIN_DIR;
+        $link = $this->context->link ;
+
         //welcome-seller
         $seller_email = new SellerEmail();
         $seller_email->reference = 'welcome-seller';
@@ -1157,7 +1201,7 @@ class marketplace extends Module
                 $seller_email->subject[$lang['id_lang']] = '"{seller_name}" ha editado su cuenta de vendedor';
                 $seller_email->description[$lang['id_lang']] = 'Este correo se envía al administrador Cuando un vendedor ha cambiado la información de su cuenta de vendedor.';
                 $seller_email->content[$lang['id_lang']] = '<p><strong>{seller_name}</strong> ha modificado su perfil de vendedor.</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>Puede acceder a su tienda para validar los cambios en <a href="'.$url_shop.'">{shop_name}</a></p>';
+                $seller_email->content[$lang['id_lang']] .= '<p>Puede acceder a su tienda para validar los cambios en <a href="'.$url_shop_admin.'">{shop_name}</a></p>';
             }
             else if($lang['iso_code'] == 'fr') {
                 $seller_email->subject[$lang['id_lang']] = '"{seller_name}" a modifié son profil';
@@ -1391,7 +1435,7 @@ class marketplace extends Module
                 $seller_email->subject[$lang['id_lang']] = 'Nouvelle commande. "{product_name}" - {order_reference}';
                 $seller_email->description[$lang['id_lang']] = 'Ce courriel est envoyé au vendeur Lorsque son produit a été acheté par un client.';
                 $seller_email->content[$lang['id_lang']] = '<p>Bonjour <strong>{seller_name}</strong>!</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>Félicitations à vous! <br> Vous avez une nouvelle commande à expédier : <br> <strong> {product_name} <br> commande "{order_reference}" N°{order_id}</strong> Merci de vous rendre sur votre compte marchand afin de valider et d\'expédier cette commande dans les 48H <br>Pour cela cliquez ici : <a href="'.$url_shop.'/connexion?back=my-account">Mon compte</a><br><strong>{shop_name}</strong> vous remercie de vendre vos produits sur Megamarket.</p>';                
+                $seller_email->content[$lang['id_lang']] .= '<p>Félicitations à vous! <br> Vous avez une nouvelle commande à expédier : <br> <strong> {product_name} <br> commande "{order_reference}" N°{order_id}</strong> Merci de vous rendre sur votre compte marchand afin de valider et d\'expédier cette commande dans les 48H <br>Pour cela cliquez ici : <a href="'.$link->getModuleLink('marketplace', 'orders', array(), true).'">Mon compte</a><br><strong>{shop_name}</strong> vous remercie de vendre vos produits sur notre plateforme de vente.</p>';                
             }
             else if($lang['iso_code'] == 'it') {
                 $seller_email->subject[$lang['id_lang']] = 'Nuevo ordine. "{product_name}" - {order_reference}';
@@ -1404,8 +1448,8 @@ class marketplace extends Module
                 $seller_email->subject[$lang['id_lang']] = 'New order. "{product_name}" - {order_reference}';
                 $seller_email->description[$lang['id_lang']] = 'This email is sent to the seller when your product has been purchased by a customer.';
                 $seller_email->content[$lang['id_lang']] = '<p>Hello <strong>{seller_name}</strong>!</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>¡Congratulations! <strong>{product_name}</strong> was purchased by a customer in <strong>{shop_name}</strong>.</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>Visit your seller account now <a href="'.$url_shop.'">{shop_name}</a></p>';
+                $seller_email->content[$lang['id_lang']] .= '<p>Congratulations! <strong>{product_name}</strong> was purchased by a customer in <strong>{shop_name}</strong>.</p>';
+                $seller_email->content[$lang['id_lang']] .= '<p>Visit your seller account now <a href="'.$link->getModuleLink('marketplace', 'orders', array(), true).'">My account</a></p>';
             }
         }
         
@@ -1428,7 +1472,7 @@ class marketplace extends Module
                 $seller_email->description[$lang['id_lang']] = 'Ce courrier est envoyé au vendeur quand un client a un problème avec unu commande.';
                 $seller_email->content[$lang['id_lang']] = '<p>Bonjour,</p><p>Il y a eu un un nouveau message reçu sur la commande <strong>{order_reference}</strong>:</p>';
                 $seller_email->content[$lang['id_lang']] .= '<p>{description}</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>Accédez à votre compte marchand pour donner une réponse dans <a href="'.$url_shop.'">{shop_name}</a></p>';
+                $seller_email->content[$lang['id_lang']] .= '<p>Accédez à votre compte marchand pour donner une réponse dans <a href="'.$link->getModuleLink('marketplace', 'contactseller', array(), true).'">{shop_name}</a></p>';
             }
             else if($lang['iso_code'] == 'it') {
                 $seller_email->subject[$lang['id_lang']] = 'Nuovo incidenza ricevuto su richiesta "{order_reference}"';
@@ -1442,7 +1486,7 @@ class marketplace extends Module
                 $seller_email->description[$lang['id_lang']] = 'This mail is sent to the seller when a customer has a problem with an order.';
                 $seller_email->content[$lang['id_lang']] = '<p>There has been a new incident on order <strong>{order_reference}</strong>:</p>';
                 $seller_email->content[$lang['id_lang']] .= '<p>{description}</p>';
-                $seller_email->content[$lang['id_lang']] .= '<p>Access your seller account to respond in en <a href="'.$url_shop.'">{shop_name}</a></p>';
+                $seller_email->content[$lang['id_lang']] .= '<p>Access your seller account to respond in en <a href="'.$link->getModuleLink('marketplace', 'contactseller', array(), true).'">{shop_name}</a></p>';
             }
         }
         
@@ -5653,6 +5697,38 @@ class marketplace extends Module
         return $this->display(__FILE__, 'customer-account.tpl');
     }
     
+    public function hookDisplayAfterCarrier($params)
+    {        
+        $context = Context::getContext();
+        $productsInCart = $this->context->cart->getProducts();
+        $id_sellers = array();
+        $products[] = array();
+        $i = 0;
+        foreach ($productsInCart as $key => $product) 
+        {
+            $id_product = $product['id_product'];
+            $seller = Seller::getSellerInfosByProduct($id_product);
+            if (!in_array($seller['id_seller'], $id_sellers))
+            {
+                array_push($id_sellers, $seller['id_seller']);
+                $products[$i] = $product;
+                $i++;
+            }
+
+        }
+        
+        $this->context->smarty->assign(
+            array(
+                'email' => Configuration::get('PS_SHOP_EMAIL'),
+                'logged' => $this->context->customer->isLogged(),
+                'id_order' => 0,         
+                'products' => $products,
+                )
+        );
+
+        return $this->display(__FILE__, 'contact_seller_shipping.tpl');        
+    }
+
     public function hookDisplayProductAdditionalInfo() 
     {
         $offersOther = array();
@@ -5729,8 +5805,10 @@ class marketplace extends Module
 
         $i=0;
 
-        if (is_array($offers)) {
-            foreach ($offers as $s) {
+        if (is_array($offers)) 
+        {
+            foreach ($offers as $s) 
+            {
 
                 $prod_ttc = new Product($s['id_product']);
                 $price_ttc = $prod_ttc->getPrice(true, NULL, 6);
@@ -5765,36 +5843,49 @@ class marketplace extends Module
                 $seller_carriers = array();
 
                 //if (class_exists('SellerCarrier')) 
-                $seller_carriers = SellerTransport::getCarriersForOrder($s['id_seller'], $id_zone);
+                /*$seller_carriers = SellerTransport::getCarriersForOrder($s['id_seller'], $id_zone);
 
                 if (!$seller_carriers)                
-                    $seller_carriers = Carrier::getCarriersForOrder($id_zone); 
+                    $seller_carriers = Carrier::getCarriersForOrder($id_zone); */
                 
-
+                $id_carrier = (int)(Configuration::get('PS_CARRIER_DEFAULT'));
+                
                 $seller_shipping_cost = 0;
 
-                if (count($seller_carriers) > 0) {
-                    $carrier = new Carrier($seller_carriers[0]['id_carrier']);
-                    $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone);
-                    //$seller_shipping_cost = $seller_carriers[0]['price'];
-                    if (!$seller_shipping_cost)
-                        $seller_shipping_cost = 0;
-
-                    $seller_shipping_cost = $seller_shipping_cost + $s['additional_shipping_cost'];
-
-                    $offers[$i]['carrier_name'] = $carrier->name; 
-                    $offers[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
-                    $offers[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay'];
-                    $offers[$i]['price_with_shipping'] = $price_ttc + $seller_shipping_cost;
-                }
+                if($product->is_virtual)
+                    $seller_shipping_cost = 0;
                 else
                 {
-                    $offers[$i]['seller_shipping_cost'] = $s['additional_shipping_cost'];
+                    if($s['id_seller'])
+                    {
+                        $offers[$i]['seller_shipping_cost'] = $s['additional_shipping_cost'];
+                        $offers[$i]['price_with_shipping'] = $s['price'] + $s['additional_shipping_cost'];
+                    }
+                    else
+                    {
+                        if (count($seller_carriers) > 0) {
+                            $carrier = new Carrier($id_carrier);
+                            $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone);
+                            //$seller_shipping_cost = $seller_carriers[0]['price'];
+                            if (!$seller_shipping_cost)
+                                $seller_shipping_cost = 0;
 
-                    $offers[$i]['price_with_shipping'] = $offers[$i]['price'] + $s['additional_shipping_cost'];
+                            $seller_shipping_cost = $seller_shipping_cost + $s['additional_shipping_cost'];
 
+                            $offers[$i]['carrier_name'] = $carrier->name; 
+                            $offers[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
+                            $offers[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay'];
+                            $offers[$i]['price_with_shipping'] = $price_ttc + $seller_shipping_cost;
+                        }
+                        else
+                        {
+                            $offers[$i]['seller_shipping_cost'] = $s['additional_shipping_cost'];
+
+                            $offers[$i]['price_with_shipping'] = $offers[$i]['price'] + $s['additional_shipping_cost'];
+
+                        }
+                    }
                 }
-
                 if (Seller::hasImage($s['id_customer']))
                     $offers[$i]['seller_has_image'] = 1;
                 else
@@ -6016,6 +6107,8 @@ class marketplace extends Module
 
         $i=0;
 
+        $id_carrier = (int)(Configuration::get('PS_CARRIER_DEFAULT'));
+
         if (is_array($offers)) {
             foreach ($offers as $s) {
 
@@ -6051,37 +6144,50 @@ class marketplace extends Module
                 
 
                 $seller_shipping_cost = 0;
-                if (count($seller_carriers) > 0) {
-                    $carrier = new Carrier($seller_carriers[0]['id_carrier']);
-                    $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone) + $s['additional_shipping_cost'];
-                    //$seller_shipping_cost = $seller_carriers[0]['price'];
-                    if (!$seller_shipping_cost)
-                        $seller_shipping_cost = $s['additional_shipping_cost'];
 
-                    $offers[$i]['carrier_name'] = $carrier->name; 
-                    $offers[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
-                    $offers[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay']; 
-                }
-
-                if (Seller::hasImage($s['id_customer']))
-                    $offers[$i]['seller_has_image'] = 1;
+                if($product->is_virtual)
+                    $seller_shipping_cost = 0;
                 else
-                    $offers[$i]['seller_has_image'] = 0;
+                {
+                    if($s['id_seller'])
+                    {
+                        $offers[$i]['seller_shipping_cost'] = $s['additional_shipping_cost'];
+                        $offers[$i]['price_with_shipping'] = $s['price'] + $s['additional_shipping_cost'];
+                    }
+                    else
+                    {
+                        if (count($seller_carriers) > 0) {
+                            $carrier = new Carrier($id_carrier);//new Carrier($seller_carriers[0]['id_carrier']);
+                            $seller_shipping_cost = $carrier->getDeliveryPriceByWeight($s['weight'], $id_zone) + $s['additional_shipping_cost'];
+                            //$seller_shipping_cost = $seller_carriers[0]['price'];
+                            if (!$seller_shipping_cost)
+                                $seller_shipping_cost = $s['additional_shipping_cost'];
 
-                $current_date = date('Y-m-d');
-                $vacancy = false;
-                $seller_holidays = SellerHoliday::getHolidaysBySeller($s['id_seller']);
-                if (is_array($seller_holidays) && count($seller_holidays) > 0) {
-                    foreach ($seller_holidays as $holiday) {
-                        if (SellerHoliday::compareDates($current_date, $holiday['from']) <= 0 && SellerHoliday::compareDates($current_date, $holiday['to']) > 0) {
-                            $vacancy = true;
-                            $to = $holiday['to'];
-                            $from = $holiday['from'];
-                            break;
+                            $offers[$i]['carrier_name'] = $carrier->name; 
+                            $offers[$i]['seller_shipping_cost'] = $seller_shipping_cost; 
+                            $offers[$i]['seller_shipping_delay'] = $seller_carriers[0]['delay']; 
+                        }
+                    }
+
+                    if (Seller::hasImage($s['id_customer']))
+                        $offers[$i]['seller_has_image'] = 1;
+                    else
+                        $offers[$i]['seller_has_image'] = 0;
+
+                    $current_date = date('Y-m-d');
+                    $vacancy = false;
+                    $seller_holidays = SellerHoliday::getHolidaysBySeller($s['id_seller']);
+                    if (is_array($seller_holidays) && count($seller_holidays) > 0) {
+                        foreach ($seller_holidays as $holiday) {
+                            if (SellerHoliday::compareDates($current_date, $holiday['from']) <= 0 && SellerHoliday::compareDates($current_date, $holiday['to']) > 0) {
+                                $vacancy = true;
+                                $to = $holiday['to'];
+                                $from = $holiday['from'];
+                                break;
+                            }
                         }
                     }
                 }
-                
                 if ($vacancy) {
                     $offers[$i]['holiday_to'] = $to;
                     $offers[$i]['holiday_from'] = $from;
@@ -6465,7 +6571,7 @@ class marketplace extends Module
                     
                     $commision = (int)SellerCommision::getCommisionBySeller($id_seller);
 
-                    $sch->commision = (float)number_format(($total_price * $commision) / 100,1);
+                    $sch->commision = (float)number_format(($total_price * $commision) / 100,2);
                     
                     $sch->id_seller_commision_history_state = SellerCommisionHistoryState::getIdByReference('pending');
                     $sch->add(); 
@@ -6721,7 +6827,7 @@ class marketplace extends Module
             $sch->id_shop = $this->context->shop->id;
             $sch->price = $total_shipping;
             $sch->quantity = 1;
-            $sch->commision = (float)($total_shipping * $commision) / 100;
+            $sch->commision = sprintf("%.02f", ($total_shipping * $commision) / 100);
             $sch->id_seller_commision_history_state = SellerCommisionHistoryState::getIdByReference('pending');
             $sch->add(); 
         }
@@ -7025,11 +7131,15 @@ class marketplace extends Module
 
                 $this->context->controller->addCSS($this->_path.'views/css/sellon.css', 'all');
 
+                $this->context->controller->addCSS($this->_path.'views/css/plugins/summernote/summernote.css', 'all');
+                
                 $this->context->controller->addJqueryPlugin('fancybox');                
 
                 $this->context->controller->addJS($this->_path.'views/js/sellon.js', 'all');
 
                 $this->context->controller->addJS($this->_path.'views/js/attributes.js', 'all');
+
+                $this->context->controller->addJS($this->_path.'views/js/plugins/summernote/summernote.js', 'all');
             }
 
             if ($this->context->controller->page_name == 'module-marketplace-addcarrier') {

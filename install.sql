@@ -281,4 +281,7 @@ ALTER TABLE `PREFIX_orders`  ADD `slip_motif` INT NOT NULL DEFAULT '0';
 
 ALTER TABLE `PREFIX_product` ADD `comments` VARCHAR(70) NULL;
 
+DELETE FROM `PREFIX_order_state_lang` WHERE `id_order_state` >= 15;
+DELETE FROM `PREFIX_order_state` WHERE `id_order_state` >= 15;
+ALTER TABLE `PREFIX_order_state_lang` AUTO_INCREMENT=15;
 ALTER TABLE `PREFIX_order_state` AUTO_INCREMENT=15;
